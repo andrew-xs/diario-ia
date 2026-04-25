@@ -9,6 +9,7 @@ from app.models.editor_draft import EditorDraft
 from app.models.control_alert import ControlAlert
 from app.models.blog_post import BlogPost
 from app.models.social_post import SocialPost
+from app.db.seed import seed_sources
 
 router = APIRouter(prefix="/debug", tags=["debug"])
 
@@ -25,6 +26,11 @@ def delete_posts(db: Session = Depends(get_db)):
     deleted = db.query(BlogPost).delete()
     db.commit()
     return {"status": "ok", "deleted_posts": deleted}
+
+
+@router.post("/seed-sources")
+def seed_default_sources(db: Session = Depends(get_db)):
+    return seed_sources(db)
 
 
 @router.delete("/reset")

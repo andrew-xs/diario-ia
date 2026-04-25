@@ -1,3 +1,5 @@
+from sqlalchemy.orm import Session
+
 from app.db.session import SessionLocal
 from app.models.source import Source
 
@@ -47,14 +49,22 @@ DEFAULT_SOURCES = [
 ]
 
 
+def seed_sources(db: Session) -> dict:
+    created = 0
+    for item in DEFAULT_SOURCES:
+        exists = db.query(Source).filter(Source.name == item["name"]).first()
+        if exists:
+            continue
+        db.add(Source(**item))
+        created += 1
+    db.commit()
+    return {"status": "ok", "sources_created": created, "sources_total": len(DEFAULT_SOURCES)}
+
+
 def run_seed():
     db = SessionLocal()
     try:
-        for item in DEFAULT_SOURCES:
-            exists = db.query(Source).filter(Source.name == item["name"]).first()
-            if not exists:
-                db.add(Source(**item))
-        db.commit()
+        seed_sources(db)
         print("Seed completado.")
     finally:
         db.close()

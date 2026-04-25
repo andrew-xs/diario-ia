@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="header">
+        <div>
+          <h1>Diario IA</h1>
+          <p class="muted">UI mínima para disparar el pipeline y ver datos.</p>
+        </div>
+        <div class="links">
+          <a href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+          <a href="/health" target="_blank" rel="noreferrer">Health</a>
+        </div>
+      </header>
+
+      <section class="card">
+        <h2>Acciones</h2>
+        <div class="grid">
+          <button id="seed">Seed sources</button>
+          <button id="ingest">Run ingestion</button>
+          <button id="orchestrator">Run full pipeline</button>
+          <button id="reset" class="danger">Reset data</button>
+        </div>
+        <p class="muted">
+          Orden típico: <code>Seed</code> → <code>Ingestion</code> → <code>Full pipeline</code>.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Consultar</h2>
+        <div class="grid">
+          <button id="sources">List sources</button>
+          <button id="articles">List raw articles</button>
+          <button id="stories">List stories</button>
+          <button id="posts">List posts</button>
+          <button id="social">List social posts</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Output</h2>
+        <div class="row">
+          <div class="muted">Última respuesta:</div>
+          <div id="status" class="pill">—</div>
+        </div>
+        <pre id="out" class="out">{}</pre>
+      </section>
+
+      <footer class="footer">
+        <span class="muted">Tip: si algo no crea datos, revisa que existan <code>sources</code> activas.</span>
+      </footer>
+    </div>
+
+    <script>
+      const out = document.getElementById("out");
+      const status = document.getElementById("status");
+
+      function setStatus(text, kind = "ok") {
+        status.textContent = text;
+        status.dataset.kind = kind;
+      }
+
+      async function call(method, path) {
+        setStatus(`${method} ${path}…`, "wait");
+        try {
+          const res = await fetch(path, { method });
+          const ct = res.headers.get("content-type") || "";
+          const body = ct.includes("application/json") ? await res.json() : await res.text();
+          out.textContent = typeof body === "string" ? body : JSON.stringify(body, null, 2);
+          setStatus(`${res.status} ${res.statusText}`, res.ok ? "ok" : "err");
+        } catch (e) {
+          out.textContent = String(e);
+          setStatus("error", "err");
+        }
+      }
+
+      document.getElementById("seed").addEventListener("click", () => call("POST", "/debug/seed-sources"));
+      document.getElementById("ingest").addEventListener("click", () => call("POST", "/pipeline/run"));
+      document.getElementById("orchestrator").addEventListener("click", () => call("POST", "/orchestrator/run"));
+      document.getElementById("reset").addEventListener("click", () => call("DELETE", "/debug/reset"));
+
+      document.getElementById("sources").addEventListener("click", () => call("GET", "/sources"));
+      document.getElementById("articles").addEventListener("click", () => call("GET", "/articles"));
+      document.getElementById("stories").addEventListener("click", () => call("GET", "/stories"));
+      document.getElementById("posts").addEventListener("click", () => call("GET", "/publisher/posts"));
+      document.getElementById("social").addEventListener("click", () => call("GET", "/community/posts"));
+    </script>
+  </body>
+</html>
+

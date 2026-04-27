@@ -33,7 +33,7 @@ def reset_pipeline_data(db: Session = Depends(get_db)):
     if settings.app_env != "development":
         raise HTTPException(
             status_code=403,
-            detail="/debug/reset solo está disponible cuando APP_ENV=development",
+            detail="/debug/reset solo esta disponible cuando APP_ENV=development",
         )
 
     deleted_social_posts = db.query(SocialPost).delete()

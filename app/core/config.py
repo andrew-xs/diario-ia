@@ -1,33 +1,40 @@
-import os
 from dataclasses import dataclass
+from pathlib import Path
+import os
 
 
-def parse_bool(value: str, default: bool = False) -> bool:
+def _parse_bool(value: str | None, default: bool) -> bool:
     if value is None:
         return default
-    return value.lower() in ("1", "true", "yes", "on")
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def load_env():
-    if not os.path.exists(".env"):
+def _load_dotenv(env_path: str = ".env") -> None:
+    file_path = Path(env_path)
+    if not file_path.exists():
         return
 
-    with open(".env") as f:
-        for line in f:
-            if line.strip() and not line.startswith("#"):
-                key, _, value = line.strip().partition("=")
-                os.environ.setdefault(key, value)
+    for raw_line in file_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+
+        os.environ.setdefault(key, value)
 
 
-load_env()
+_load_dotenv()
 
 
-@dataclass
+@dataclass(frozen=True)
 class Settings:
     app_env: str = os.getenv("APP_ENV", "development")
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./diario_ia.db")
-    wordpress_enabled: bool = parse_bool(os.getenv("WORDPRESS_ENABLED"), False)
-    social_enabled: bool = parse_bool(os.getenv("SOCIAL_ENABLED"), False)
+    wordpress_enabled: bool = _parse_bool(os.getenv("WORDPRESS_ENABLED"), default=False)
+    social_enabled: bool = _parse_bool(os.getenv("SOCIAL_ENABLED"), default=True)
 
 
 settings = Settings()

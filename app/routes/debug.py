@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.raw_article import RawArticle
 from app.models.story import Story
@@ -9,7 +10,6 @@ from app.models.editor_draft import EditorDraft
 from app.models.control_alert import ControlAlert
 from app.models.blog_post import BlogPost
 from app.models.social_post import SocialPost
-from app.db.seed import seed_sources
 
 router = APIRouter(prefix="/debug", tags=["debug"])
 
@@ -28,13 +28,14 @@ def delete_posts(db: Session = Depends(get_db)):
     return {"status": "ok", "deleted_posts": deleted}
 
 
-@router.post("/seed-sources")
-def seed_default_sources(db: Session = Depends(get_db)):
-    return seed_sources(db)
-
-
 @router.delete("/reset")
 def reset_pipeline_data(db: Session = Depends(get_db)):
+    if settings.app_env != "development":
+        raise HTTPException(
+            status_code=403,
+            detail="/debug/reset solo está disponible cuando APP_ENV=development",
+        )
+
     deleted_social_posts = db.query(SocialPost).delete()
     deleted_alerts = db.query(ControlAlert).delete()
     deleted_posts = db.query(BlogPost).delete()

@@ -3,8 +3,11 @@ from difflib import SequenceMatcher
 
 from sqlalchemy.orm import Session
 
+from app.core.logging import get_logger
 from app.models.raw_article import RawArticle
 from app.models.story import Story
+
+logger = get_logger(__name__)
 
 
 def similarity(a: str, b: str) -> float:
@@ -33,46 +36,72 @@ def find_matching_story(db: Session, article: RawArticle) -> Story | None:
 
 
 def assign_articles_to_stories(db: Session) -> dict:
-    existing_stories_before = db.query(Story).count()
-    articles = db.query(RawArticle).filter(RawArticle.story_id.is_(None)).all()
+    logger.info("Stories resolver iniciado")
 
-    created_stories = 0
-    linked_articles = 0
-    matched_existing_stories = 0
+    try:
+        existing_stories_before = db.query(Story).count()
+        articles = db.query(RawArticle).filter(RawArticle.story_id.is_(None)).all()
 
-    for article in articles:
-        matched_story = find_matching_story(db, article)
+        created_stories = 0
+        linked_articles = 0
+        matched_existing_stories = 0
 
-        if matched_story:
-            article.story_id = matched_story.id
-            matched_story.updated_at = datetime.utcnow()
-            matched_existing_stories += 1
+        for article in articles:
+            matched_story = find_matching_story(db, article)
+
+            if matched_story:
+                article.story_id = matched_story.id
+                matched_story.updated_at = datetime.utcnow()
+                matched_existing_stories += 1
+                linked_articles += 1
+                continue
+
+            new_story = Story(
+                title=article.title,
+                category=article.category_hint,
+                summary=article.summary,
+                status="open",
+            )
+            db.add(new_story)
+            db.flush()
+
+            article.story_id = new_story.id
+            created_stories += 1
             linked_articles += 1
-            continue
 
-        new_story = Story(
-            title=article.title,
-            category=article.category_hint,
-            summary=article.summary,
-            status="open",
+        db.commit()
+
+        existing_stories_after = db.query(Story).count()
+
+        logger.info(
+            "Stories resolver finalizado | processed=%s created=%s linked=%s matched_existing=%s",
+            len(articles),
+            created_stories,
+            linked_articles,
+            matched_existing_stories,
         )
-        db.add(new_story)
-        db.flush()
 
-        article.story_id = new_story.id
-        created_stories += 1
-        linked_articles += 1
+        return {
+            "status": "ok",
+            "unassigned_articles_processed": len(articles),
+            "stories_existing_before": existing_stories_before,
+            "stories_created": created_stories,
+            "articles_linked": linked_articles,
+            "articles_matched_to_existing_stories": matched_existing_stories,
+            "stories_existing_after": existing_stories_after,
+        }
 
-    db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Stories resolver fallo: %s", exc)
 
-    existing_stories_after = db.query(Story).count()
-
-    return {
-        "status": "ok",
-        "unassigned_articles_processed": len(articles),
-        "stories_existing_before": existing_stories_before,
-        "stories_created": created_stories,
-        "articles_linked": linked_articles,
-        "articles_matched_to_existing_stories": matched_existing_stories,
-        "stories_existing_after": existing_stories_after,
-    }
+        return {
+            "status": "error",
+            "error": str(exc),
+            "unassigned_articles_processed": 0,
+            "stories_existing_before": 0,
+            "stories_created": 0,
+            "articles_linked": 0,
+            "articles_matched_to_existing_stories": 0,
+            "stories_existing_after": 0,
+        }

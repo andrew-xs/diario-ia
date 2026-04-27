@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from app.core.logging import get_logger
 from app.services.ingestion import run_mock_ingestion
 from app.services.stories import assign_articles_to_stories
 from app.services.reporter import generate_reports
@@ -8,32 +9,51 @@ from app.services.control import run_control_checks
 from app.services.publisher import publish_drafts
 from app.services.community import publish_social_posts
 
+logger = get_logger(__name__)
+
 
 def run_full_pipeline(db: Session) -> dict:
+    logger.info("Orchestrator iniciado")
+
     results = {}
 
-    # 1. Ingesta
-    results["ingestion"] = run_mock_ingestion(db)
+    stages = [
+        ("ingestion", run_mock_ingestion),
+        ("stories", assign_articles_to_stories),
+        ("reporter", generate_reports),
+        ("editor", process_reports),
+        ("control", run_control_checks),
+        ("publisher", publish_drafts),
+        ("community", publish_social_posts),
+    ]
 
-    # 2. Agrupar en stories
-    results["stories"] = assign_articles_to_stories(db)
+    for stage_name, stage_fn in stages:
+        logger.info("Ejecutando etapa: %s", stage_name)
 
-    # 3. Generar reportes
-    results["reporter"] = generate_reports(db)
+        try:
+            result = stage_fn(db)
+            results[stage_name] = result
 
-    # 4. Procesar drafts editoriales
-    results["editor"] = process_reports(db)
+            if result.get("status") == "error":
+                logger.error("Etapa %s retorno error controlado", stage_name)
+            else:
+                logger.info("Etapa %s finalizada correctamente", stage_name)
 
-    # 5. Control de calidad
-    results["control"] = run_control_checks(db)
+        except Exception as exc:
+            logger.exception("Etapa %s lanzo excepcion: %s", stage_name, exc)
+            results[stage_name] = {
+                "status": "error",
+                "error": str(exc),
+            }
 
-    # 6. Publicación
-    results["publisher"] = publish_drafts(db)
+    pipeline_status = "ok"
 
-    # 7. RRSS
-    results["community"] = publish_social_posts(db)
+    if any(item.get("status") == "error" for item in results.values()):
+        pipeline_status = "partial_error"
+
+    logger.info("Orchestrator finalizado | status=%s", pipeline_status)
 
     return {
-        "status": "ok",
+        "status": pipeline_status,
         "pipeline_results": results,
     }

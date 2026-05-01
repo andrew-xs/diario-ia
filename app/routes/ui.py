@@ -12,9 +12,9 @@ templates = Jinja2Templates(directory=str(_HERE.parent / "templates"))
 @router.get("", response_class=HTMLResponse)
 def ui(request: Request):
     return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-        context={
+        "index.html",
+        {
+            "request": request,
             "title": "Diario IA",
         },
     )

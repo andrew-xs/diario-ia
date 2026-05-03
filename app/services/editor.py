@@ -6,22 +6,48 @@ from app.models.editor_draft import EditorDraft
 
 logger = get_logger(__name__)
 
+def clean_title(title: str) -> str:
+    t = title.strip()
+
+    # cortar títulos compuestos típicos de RSS
+    separators = [";", " y ", " | ", " – ", " - "]
+
+    for sep in separators:
+        if sep in t:
+            t = t.split(sep)[0]
+
+    return t.strip()
 
 def slugify(text: str) -> str:
-    return text.lower().replace(" ", "-")
+    return (
+        text.lower()
+        .replace(" ", "-")
+        .replace(",", "")
+        .replace(".", "")
+        .replace(":", "")
+        .replace(";", "")
+    )
 
 
 def build_content(report: ReporterReport) -> str:
-    return f"""
-{report.title}
+    title=clean_title(report.title),
 
-{report.summary}
+    intro = f"{title}."
+
+    body = report.report_body or ""
+
+    summary = report.summary or ""
+
+    content = f"""{intro}
+
+{summary}
+
+{body}
 
 Fuentes consolidadas: {report.source_count}
-
-{report.report_body}
 """
 
+    return content.strip()
 
 def process_reports(db: Session) -> dict:
     logger.info("Editor iniciado")

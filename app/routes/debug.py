@@ -36,23 +36,29 @@ def reset_pipeline_data(db: Session = Depends(get_db)):
             detail="/debug/reset solo esta disponible cuando APP_ENV=development",
         )
 
-    deleted_social_posts = db.query(SocialPost).delete()
-    deleted_alerts = db.query(ControlAlert).delete()
-    deleted_posts = db.query(BlogPost).delete()
-    deleted_drafts = db.query(EditorDraft).delete()
-    deleted_reports = db.query(ReporterReport).delete()
-    deleted_stories = db.query(Story).delete()
-    deleted_articles = db.query(RawArticle).delete()
+    try:
+        # Orden correcto: primero tablas hijas, luego tablas padre.
+        deleted_social_posts = db.query(SocialPost).delete()
+        deleted_posts = db.query(BlogPost).delete()
+        deleted_alerts = db.query(ControlAlert).delete()
+        deleted_drafts = db.query(EditorDraft).delete()
+        deleted_reports = db.query(ReporterReport).delete()
+        deleted_articles = db.query(RawArticle).delete()
+        deleted_stories = db.query(Story).delete()
 
-    db.commit()
+        db.commit()
 
-    return {
-        "status": "ok",
-        "deleted_articles": deleted_articles,
-        "deleted_stories": deleted_stories,
-        "deleted_reports": deleted_reports,
-        "deleted_drafts": deleted_drafts,
-        "deleted_alerts": deleted_alerts,
-        "deleted_posts": deleted_posts,
-        "deleted_social_posts": deleted_social_posts,
-    }
+        return {
+            "status": "ok",
+            "deleted_articles": deleted_articles,
+            "deleted_stories": deleted_stories,
+            "deleted_reports": deleted_reports,
+            "deleted_drafts": deleted_drafts,
+            "deleted_alerts": deleted_alerts,
+            "deleted_posts": deleted_posts,
+            "deleted_social_posts": deleted_social_posts,
+        }
+
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(exc))

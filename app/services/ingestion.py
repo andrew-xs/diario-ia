@@ -1,5 +1,8 @@
 from datetime import datetime
 
+import re
+from html import unescape
+
 import feedparser
 from sqlalchemy.orm import Session
 
@@ -9,6 +12,24 @@ from app.models.raw_article import RawArticle
 
 logger = get_logger(__name__)
 
+def clean_html(text: str) -> str:
+    if not text:
+        return ""
+
+    # decode entidades HTML
+    text = unescape(text)
+
+    # eliminar tags HTML
+    text = re.sub(r"<.*?>", "", text)
+
+    # eliminar espacios múltiples
+    text = re.sub(r"\s+", " ", text)
+
+    # limpiar basura común
+    text = text.replace("Leer más", "")
+    text = text.replace("Ver más", "")
+
+    return text.strip()
 
 def _parse_published(entry) -> datetime:
     published = entry.get("published_parsed") or entry.get("updated_parsed")
@@ -98,7 +119,8 @@ def run_rss_ingestion(db: Session) -> dict:
                     continue
 
                 title = entry.get("title") or "Sin titulo"
-                summary = entry.get("summary") or entry.get("description") or ""
+                raw_summary = entry.get("summary") or entry.get("description") or ""
+                summary = clean_html(raw_summary)
 
                 article = RawArticle(
                     source_id=source.id,

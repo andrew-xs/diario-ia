@@ -10,27 +10,81 @@ from app.models.story import Story
 logger = get_logger(__name__)
 
 
+STOPWORDS = {
+    "el", "la", "los", "las", "un", "una", "unos", "unas",
+    "de", "del", "en", "por", "para", "con", "sin", "sobre",
+    "y", "o", "que", "a", "al", "se", "su", "sus", "lo",
+    "tras", "ante", "desde", "hasta", "como",
+}
+
+
+def normalize_title(title: str) -> str:
+    text = title.lower()
+
+    for ch in [":", ";", ",", ".", "¿", "?", "¡", "!", "\"", "'", "“", "”", "(", ")"]:
+        text = text.replace(ch, " ")
+
+    words = [
+        word.strip()
+        for word in text.split()
+        if len(word.strip()) > 2 and word.strip() not in STOPWORDS
+    ]
+
+    return " ".join(words)
+
+
 def similarity(a: str, b: str) -> float:
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+    a_norm = normalize_title(a)
+    b_norm = normalize_title(b)
+
+    if not a_norm or not b_norm:
+        return 0.0
+
+    return SequenceMatcher(None, a_norm, b_norm).ratio()
+
+
+def token_overlap(a: str, b: str) -> float:
+    a_tokens = set(normalize_title(a).split())
+    b_tokens = set(normalize_title(b).split())
+
+    if not a_tokens or not b_tokens:
+        return 0.0
+
+    intersection = a_tokens.intersection(b_tokens)
+    union = a_tokens.union(b_tokens)
+
+    return len(intersection) / len(union)
 
 
 def find_matching_story(db: Session, article: RawArticle) -> Story | None:
-    if not article.category_hint:
-        return None
+    stories_query = db.query(Story)
 
-    stories = db.query(Story).filter(Story.category == article.category_hint).all()
+    if article.category_hint:
+        stories_query = stories_query.filter(Story.category == article.category_hint)
 
-    best_match = None
+    stories = stories_query.all()
+
+    best_story = None
     best_score = 0.0
 
     for story in stories:
-        score = similarity(article.title, story.title)
-        if score > best_score:
-            best_score = score
-            best_match = story
+        sequence_score = similarity(article.title, story.title)
+        overlap_score = token_overlap(article.title, story.title)
 
-    if best_match and best_score >= 0.80:
-        return best_match
+        combined_score = (sequence_score * 0.6) + (overlap_score * 0.4)
+
+        if combined_score > best_score:
+            best_score = combined_score
+            best_story = story
+
+    if best_story and best_score >= 0.62:
+        logger.info(
+            "Articulo vinculado a story existente | article='%s' story='%s' score=%.2f",
+            article.title,
+            best_story.title,
+            best_score,
+        )
+        return best_story
 
     return None
 
@@ -58,10 +112,11 @@ def assign_articles_to_stories(db: Session) -> dict:
 
             new_story = Story(
                 title=article.title,
-                category=article.category_hint,
+                category=article.category_hint or "general",
                 summary=article.summary,
                 status="open",
             )
+
             db.add(new_story)
             db.flush()
 

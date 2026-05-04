@@ -8,15 +8,37 @@ from app.models.control_alert import ControlAlert
 logger = get_logger(__name__)
 
 
+def normalize_for_comparison(text: str) -> str:
+    return (
+        (text or "")
+        .lower()
+        .replace(";", "")
+        .replace(",", "")
+        .replace(".", "")
+        .replace(":", "")
+        .replace("|", "")
+        .replace("–", "-")
+        .strip()
+    )
+
+
 def compare_report_and_draft(report: ReporterReport, draft: EditorDraft) -> list[dict]:
     alerts = []
 
-    if report.title != draft.title:
+    report_title = normalize_for_comparison(report.title)
+    draft_title = normalize_for_comparison(draft.title)
+
+    if (
+        draft_title
+        and report_title
+        and draft_title not in report_title
+        and report_title not in draft_title
+    ):
         alerts.append(
             {
                 "severity": "medium",
                 "field_name": "title",
-                "message": "El titulo del draft difiere del titulo del reporte.",
+                "message": "El titulo del draft difiere sustancialmente del titulo del reporte.",
                 "suggested_fix": "Revisar si el cambio es editorialmente correcto.",
             }
         )
@@ -103,7 +125,7 @@ def run_control_checks(db: Session) -> dict:
                         )
                     )
 
-                alerts_created += 1
+                alerts_created += len(alerts)
                 draft.status = "needs_review"
                 drafts_blocked += 1
 

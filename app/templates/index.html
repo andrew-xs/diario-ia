@@ -52,10 +52,83 @@
         <pre id="out" class="out">{}</pre>
       </section>
 
-      <footer class="footer">
-        <span class="muted">Tip: si algo no crea datos, revisa que existan <code>sources</code> activas.</span>
-      </footer>
+      <section class="card">
+        <h2>Filtrar por categoría</h2>
+        <div class="grid">
+          <a href="/ui"><button>Todos</button></a>
+
+          {% for c in categories %}
+            <a href="/ui?category={{ c }}">
+              <button {% if c == selected_category %}style="background:#444;color:white"{% endif %}>
+                {{ c }}
+              </button>
+            </a>
+          {% endfor %}
+        </div>
+      </section>     
+      
+      <section class="card">
+  <h2>Panel editorial</h2>
+
+  {% if drafts %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Título</th>
+            <th>Estado</th>
+            <th>Prioridad</th>
+            <th>Puntaje</th>
+            <th>Alertas abiertas</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in drafts %}
+            <tr>
+              <td>{{ d.id }}</td>
+              <td>{{ d.title }}</td>
+              <td>{{ d.status }}</td>
+              <td>{{ d.priority }}</td>
+              <td>{{ d.score }}</td>
+              <td>{{ d.open_alerts }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+  {% else %}
+    <p class="muted">No hay drafts editoriales todavía.</p>
+  {% endif %}
+</section>
+
+      <section class="card">
+        <h2>Últimos artículos RSS</h2>
+        <ul>
+          {% for a in articles %}
+            <li>
+              <a href="{{ a.url }}" target="_blank">{{ a.title }}</a>
+            </li>
+          {% else %}
+            <li>No hay artículos</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Posts publicados</h2>
+        <ul>
+          {% for p in posts %}
+            <li>{{ p.title }}</li>
+          {% else %}
+            <li>No hay posts</li>
+          {% endfor %}
+        </ul>
+      </section>
+          <footer class="footer">
+            <span class="muted">Tip: si algo no crea datos, revisa que existan <code>sources</code> activas.</span>
+          </footer>
+        </div>
 
     <script>
       const out = document.getElementById("out");

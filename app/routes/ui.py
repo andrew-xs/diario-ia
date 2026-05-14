@@ -74,8 +74,8 @@ def ui(request: Request, db: Session = Depends(get_db)):
                 "id": draft.id,
                 "title": draft.title,
                 "status": draft.status,
-                "priority": extract_editorial_priority(draft.content),
-                "score": extract_editorial_score(draft.content),
+                "priority": draft.editorial_priority or "—",
+                "score": draft.editorial_score if draft.editorial_score is not None else "—",
                 "open_alerts": open_alerts,
             }
         )

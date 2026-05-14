@@ -2,6 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import String, Integer, ForeignKey, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 
 from app.db.session import Base
 
@@ -23,3 +24,7 @@ class EditorDraft(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     story = relationship("Story")
+
+    editorial_score = Column(Integer, nullable=True)
+
+    editorial_priority = Column(String, nullable=True)

@@ -28,20 +28,83 @@ def slugify(text: str) -> str:
         .replace(";", "")
     )
 
+def calculate_editorial_score(report: ReporterReport) -> int:
+    score = 0
+
+    title = (report.title or "").lower()
+    category = (report.category or "").lower()
+    summary = (report.summary or "").lower()
+
+    important_categories = {
+        "politica": 25,
+        "economia": 20,
+        "seguridad": 20,
+        "salud": 15,
+        "internacional": 15,
+        "tecnologia": 10,
+        "general": 5,
+    }
+
+    score += important_categories.get(category, 5)
+
+    high_impact_keywords = [
+        "gobierno",
+        "presidente",
+        "ministro",
+        "congreso",
+        "ley",
+        "hacienda",
+        "salario",
+        "crisis",
+        "delito",
+        "homicidio",
+        "secuestro",
+        "codelco",
+        "corrupcion",
+        "tribunal",
+        "corte",
+        "fiscalia",
+        "migracion",
+        "educacion",
+        "salud",
+    ]
+
+    for keyword in high_impact_keywords:
+        if keyword in title or keyword in summary:
+            score += 5
+
+    if report.source_count and report.source_count > 1:
+        score += 10
+
+    return min(score, 100)
+
+
+def editorial_priority(score: int) -> str:
+    if score >= 60:
+        return "alta"
+    if score >= 35:
+        return "media"
+    return "baja"
 
 def build_content(report: ReporterReport) -> str:
-    title=clean_title(report.title),
+    title = clean_title(report.title)
+
+    score = calculate_editorial_score(report)
+    priority = editorial_priority(score)
 
     intro = f"{title}."
-
     body = report.report_body or ""
-
     summary = report.summary or ""
 
     content = f"""{intro}
 
+Prioridad editorial: {priority}
+Puntaje editorial: {score}/100
+
+Resumen:
 {summary}
 
+Desarrollo:
 {body}
 
 Fuentes consolidadas: {report.source_count}
@@ -64,14 +127,19 @@ def process_reports(db: Session) -> dict:
             if exists:
                 continue
 
+            score = calculate_editorial_score(report)
+            priority = editorial_priority(score)
+
             draft = EditorDraft(
                 story_id=report.story_id,
                 reporter_report_id=report.id,
-                title=report.title,
+                title=clean_title(report.title),
                 slug=slugify(report.title),
                 content=build_content(report),
                 action="create",
                 status="draft",
+                editorial_score=score,
+                editorial_priority=priority,
             )
 
             db.add(draft)

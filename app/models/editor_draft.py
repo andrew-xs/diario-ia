@@ -28,3 +28,9 @@ class EditorDraft(Base):
     editorial_score = Column(Integer, nullable=True)
 
     editorial_priority = Column(String, nullable=True)
+
+    raw_content = Column(Text, nullable=True)
+    ai_title = Column(String, nullable=True)
+    ai_summary = Column(Text, nullable=True)
+    ai_rewritten_content = Column(Text, nullable=True)
+    ai_status = Column(String, default="not_processed")

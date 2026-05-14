@@ -130,16 +130,20 @@ def process_reports(db: Session) -> dict:
             score = calculate_editorial_score(report)
             priority = editorial_priority(score)
 
+            raw_content = build_content(report)
+
             draft = EditorDraft(
                 story_id=report.story_id,
                 reporter_report_id=report.id,
                 title=clean_title(report.title),
                 slug=slugify(report.title),
-                content=build_content(report),
+                content=raw_content,
+                raw_content=raw_content,
                 action="create",
                 status="draft",
                 editorial_score=score,
                 editorial_priority=priority,
+                ai_status="not_processed",
             )
 
             db.add(draft)

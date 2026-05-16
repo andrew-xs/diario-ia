@@ -21,6 +21,8 @@ class RawArticle(Base):
     extraction_quality: Mapped[str] = mapped_column(String(50), default="metadata_only", nullable=False)
     extraction_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     source = relationship("Source")

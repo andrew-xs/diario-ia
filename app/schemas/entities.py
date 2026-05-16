@@ -25,6 +25,8 @@ class RawArticleSchema(BaseModel):
     extraction_quality: str
     extraction_notes: str | None = None
     published_at: datetime | None = None
+    last_seen_at: datetime | None = None
+    updated_at: datetime | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

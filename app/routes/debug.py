@@ -14,8 +14,17 @@ from app.models.social_post import SocialPost
 router = APIRouter(prefix="/debug", tags=["debug"])
 
 
+def ensure_development_env():
+    if settings.app_env != "development":
+        raise HTTPException(
+            status_code=403,
+            detail="Debug delete solo disponible en development",
+        )
+
+
 @router.delete("/articles")
 def delete_articles(db: Session = Depends(get_db)):
+    ensure_development_env()
     deleted = db.query(RawArticle).delete()
     db.commit()
     return {"status": "ok", "deleted_articles": deleted}
@@ -23,18 +32,28 @@ def delete_articles(db: Session = Depends(get_db)):
 
 @router.delete("/posts")
 def delete_posts(db: Session = Depends(get_db)):
-    deleted = db.query(BlogPost).delete()
-    db.commit()
-    return {"status": "ok", "deleted_posts": deleted}
+    ensure_development_env()
+
+    try:
+        deleted_social_posts = db.query(SocialPost).delete()
+        deleted_posts = db.query(BlogPost).delete()
+
+        db.commit()
+
+        return {
+            "status": "ok",
+            "deleted_posts": deleted_posts,
+            "deleted_social_posts": deleted_social_posts,
+        }
+
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.delete("/reset")
 def reset_pipeline_data(db: Session = Depends(get_db)):
-    if settings.app_env != "development":
-        raise HTTPException(
-            status_code=403,
-            detail="/debug/reset solo esta disponible cuando APP_ENV=development",
-        )
+    ensure_development_env()
 
     try:
         # Orden correcto: primero tablas hijas, luego tablas padre.

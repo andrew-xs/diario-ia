@@ -80,9 +80,9 @@ def calculate_editorial_score(report: ReporterReport) -> int:
 
 
 def editorial_priority(score: int) -> str:
-    if score >= 60:
+    if score >= 20:
         return "alta"
-    if score >= 35:
+    if score >= 10:
         return "media"
     return "baja"
 

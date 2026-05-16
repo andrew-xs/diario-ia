@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, Integer, ForeignKey, DateTime, Text
+from sqlalchemy import String, Integer, ForeignKey, DateTime, Text, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -8,6 +8,7 @@ from app.db.session import Base
 
 class BlogPost(Base):
     __tablename__ = "blog_posts"
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     story_id: Mapped[int] = mapped_column(ForeignKey("stories.id"), nullable=False)

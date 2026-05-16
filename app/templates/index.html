@@ -101,7 +101,41 @@
     <p class="muted">No hay drafts editoriales todavía.</p>
   {% endif %}
 </section>
+      <section class="card">
+      <h2>Portada dinámica</h2>
 
+      {% if frontpage_posts %}
+        <ul>
+          {% for post, draft in frontpage_posts %}
+            <li>
+              <strong>{{ post.title }}</strong>
+              <br />
+              <span class="muted">
+                Prioridad: {{ draft.editorial_priority or "—" }} |
+                Puntaje: {{ draft.editorial_score or "—" }} |
+                Fecha: {{ post.created_at }}
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">No hay posts recientes para portada.</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h2>Archivo reciente</h2>
+
+      {% if archive_posts %}
+        <ul>
+          {% for p in archive_posts %}
+            <li>{{ p.title }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">No hay posts en archivo reciente.</p>
+      {% endif %}
+    </section>
       <section class="card">
         <h2>Últimos artículos RSS</h2>
         <ul>

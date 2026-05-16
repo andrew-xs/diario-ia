@@ -1,4 +1,6 @@
+from datetime import datetime, timedelta
 from pathlib import Path
+
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -83,6 +85,29 @@ def ui(request: Request, db: Session = Depends(get_db)):
     categories = db.query(RawArticle.category_hint).distinct().all()
     categories = [c[0] for c in categories if c[0]]
 
+    recent_limit = datetime.utcnow() - timedelta(days=7)
+
+    frontpage_posts = (
+        db.query(BlogPost, EditorDraft)
+        .join(EditorDraft, BlogPost.editor_draft_id == EditorDraft.id)
+        .filter(BlogPost.status == "published")
+        .filter(BlogPost.created_at >= recent_limit)
+        .order_by(
+            EditorDraft.editorial_score.desc().nullslast(),
+            BlogPost.created_at.desc(),
+        )
+        .limit(10)
+        .all()
+    )
+
+    archive_posts = (
+        db.query(BlogPost)
+        .order_by(BlogPost.created_at.desc())
+        .offset(10)
+        .limit(20)
+        .all()
+    )
+
     return templates.TemplateResponse(
         request=request,
         name="index.html",
@@ -93,5 +118,7 @@ def ui(request: Request, db: Session = Depends(get_db)):
             "drafts": draft_rows,
             "categories": categories,
             "selected_category": category,
+            "frontpage_posts": frontpage_posts,
+            "archive_posts": archive_posts,
         },
     )
